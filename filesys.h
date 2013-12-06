@@ -26,6 +26,9 @@
 
 #define UNUSED        -1
 #define ENDOFCHAIN     0
+ #ifdef EOF
+ #undef EOF
+ #endif
 #define EOF           -1
 
 
@@ -103,6 +106,11 @@ typedef struct filedescriptor {
 
 void format() ;
 void writedisk ( const char * filename ) ;
+void readdisk ( const char * filename );
+
+MyFILE * myfopen(const char * filename, const char* mode);
+void myfputc ( Byte byte, MyFILE *file );
+void myfclose(MyFILE *file );
 
 
 #endif
