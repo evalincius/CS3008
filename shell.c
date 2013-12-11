@@ -8,11 +8,11 @@ int main()
    format();
    const char* fileName = "testfileABC.txt";
    const char* mode = "w";
-   Byte text[4*BLOCKSIZE] = "Hello";
+   Byte text[4*BLOCKSIZE] = "Aaaa";
    int length = strlen(text);
    MyFILE * file;
    file = myfopen(fileName, mode);
-   for(int i =0; i<length; i++)
+   for(int i =0; i<4*BLOCKSIZE; i++)
    {
    	Byte byte = text[i];
    	//printf("file's pos %d\n", text[i]);

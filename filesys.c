@@ -61,8 +61,10 @@ MyFILE * myfopen(const char * filename, const char* mode)
   MyFILE *file = malloc(sizeof(MyFILE));
   diskblock_t buffer;
   dirblock_t rootDir;
+  (*file).blockno = 4;
   readblock(&buffer,3);
   rootDir = buffer.dir;
+
 
   int fileIndex = -1;
   
@@ -87,56 +89,66 @@ MyFILE * myfopen(const char * filename, const char* mode)
               fatentry_t next = FAT[currentblock];
               FAT[currentblock] = UNUSED;
               currentblock = next;
-              
             }
+
         }
 
   int firstunused = -1;            
-  for(int i = 4 ; i< BLOCKSIZE && firstunused == -1; i++){
-      if(FAT[i]== UNUSED)
+  for(int i = 3 ; i< BLOCKSIZE && firstunused == -1; i++){
+      if(FAT[i]== UNUSED){
         firstunused = i;
+        }
 
   }
-  
-  //file = malloc(sizeof(MyFILE));
-  //strcpy(file->mode,mode);
-  //file->blockno = rootDir.entrylist[].firstblock;
-  //file->pos = 0;
-  //readblock(file->buffer,file->blockno);
-  //printf("Accessing root at index %d\n", fileIndex);
-  //printf("FAT entry %d\n", firstunused);
   rootDir.entrylist[fileIndex].isdir = 1;
   rootDir.entrylist[fileIndex].unused= FALSE;
   rootDir.entrylist[fileIndex].modtime = 0;
   rootDir.entrylist[fileIndex].filelength=0;
   rootDir.entrylist[fileIndex].firstblock  = firstunused;
   strcpy(rootDir.entrylist[fileIndex].name, filename);
-  //printf("Writing block %d\n", 3);
   writeblock(&rootDir, 3);
-
   return file;
 }
 void myfputc ( Byte byte, MyFILE *file )
 {
   //printf("file's pos %d\n", byte);
-  int filepos = (*file).pos;
-    if(filepos < BLOCKSIZE){
-    (*file).buffer.data[filepos] = byte;
-      
-    //printf("data %d\n", buff.data[filepos]);
-      //writeblock(&(*file).buffer, 4);
-    filepos= ++(*file).pos;
-
-  }return;
-}
-void myfclose(MyFILE *file )
-{
-  for(int i=0; i<BLOCKSIZE; i++){
-    printf("data %d\n", (*file).buffer.data[i]);
-
-  }
-  writeblock(&(*file).buffer, 4);
   
+  int filepos = (*file).pos;
+    if(filepos <= BLOCKSIZE){
+    (*file).buffer.data[filepos] = byte;
+    filepos= ++(*file).pos;
+    }else{
+      int tempblnr = (*file).blockno;
+      (*file).blockno ++;
+      (*file).pos = 0;
+      writeblock(&(*file).buffer, tempblnr);
+      memset(&(*file).buffer,0,sizeof(diskblock_t));
+      //int tempblocknr = (*file).blockno;
+      diskblock_t block ;
+      readblock(&block,1);
+      diskblock_t block2 ;
+      readblock(&block2,2);
+      for(int i = tempblnr; i < BLOCKSIZE; i++){
+      FAT[i] = UNUSED;
+      }
+      FAT[tempblnr] = (*file).blockno ;
+      //FAT[2] = 3;
+      FAT[(*file).blockno] = ENDOFCHAIN;
+      
+      for(int i = 0; i < 512; i++){
+      block.fat[i] = FAT[i];
+      }
+       writeblock(&block, 1);
+      for(int i = 512; i < 1024; i++){
+       block2.fat[i-512] = FAT[i];
+      }
+      writeblock(&block2, 2);
+    }
+  
+}
+void myfclose(MyFILE *file)
+{
+
 }
 
 
@@ -186,6 +198,9 @@ void format ( )
     }
    FAT[1] = 2 ;
    FAT[2] = ENDOFCHAIN;
+   FAT[3] = ENDOFCHAIN;
+   
+   
   
     for(i = 0; i < 512; i++){
      block.fat[i] = FAT[i];
@@ -210,7 +225,7 @@ void format ( )
     block.data[i]= 0;
     
   }
-  for(i=4; i<BLOCKSIZE; i++){
+  for(i=3; i<BLOCKSIZE; i++){
     
     writeblock(&block, i);
     
