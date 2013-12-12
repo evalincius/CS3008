@@ -108,8 +108,9 @@ void format() ;
 void writedisk ( const char * filename ) ;
 void readdisk ( const char * filename );
 
-MyFILE * myfopen(const char * filename, const char* mode);
+MyFILE * myfopen(char * filename, char* mode);
 void myfputc ( Byte byte, MyFILE *file );
+Byte myfgetc(MyFILE *file);
 void myfclose(MyFILE *file );
 
 

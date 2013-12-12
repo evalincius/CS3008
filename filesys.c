@@ -55,7 +55,7 @@ void writeblock ( diskblock_t * block, int block_address )
    memmove ( virtualDisk[block_address].data, block->data, BLOCKSIZE ) ;
    //printf ( "writeblock> virtualdisk[%d] = %s / %d\n", block_address, virtualDisk[block_address].data, (int)virtualDisk[block_address].data ) ;
 }
-MyFILE * myfopen(const char * filename, const char* mode)
+MyFILE * myfopen(char * filename, char* mode)
 {
 
   MyFILE *file = malloc(sizeof(MyFILE));
@@ -74,7 +74,9 @@ MyFILE * myfopen(const char * filename, const char* mode)
       {
         fileIndex = i;
         if(mode == "r"){
-          //indexa blocko ir buferiui 
+          (*file).buffer = buffer;
+          (*file).pos = 0;
+          return file;
         }
       }
   }
@@ -123,7 +125,6 @@ void myfputc ( Byte byte, MyFILE *file )
       (*file).pos = 0;
       writeblock(&(*file).buffer, tempblnr);
       memset(&(*file).buffer,0,sizeof(diskblock_t));
-      //int tempblocknr = (*file).blockno;
       diskblock_t block ;
       readblock(&block,1);
       diskblock_t block2 ;
@@ -132,7 +133,6 @@ void myfputc ( Byte byte, MyFILE *file )
       FAT[i] = UNUSED;
       }
       FAT[tempblnr] = (*file).blockno ;
-      //FAT[2] = 3;
       FAT[(*file).blockno] = ENDOFCHAIN;
       
       for(int i = 0; i < 512; i++){
@@ -146,6 +146,24 @@ void myfputc ( Byte byte, MyFILE *file )
     }
   
 }
+Byte myfgetc(MyFILE *file)
+{   fatentry_t num;
+    Byte Buffdata;
+    int filepos = (*file).pos;
+    if(filepos <= BLOCKSIZE){
+    Buffdata = (*file).buffer.data[filepos];
+    filepos= ++(*file).pos;
+    }else{
+      memset(&(*file).buffer,0,sizeof(diskblock_t));
+      (*file).pos = 0;
+      num = (*file).blockno++;
+      readblock(&(*file).buffer,num);
+      Byte Buffdata = (*file).buffer.data[filepos];
+      
+    }
+    return Buffdata;
+}
+
 void myfclose(MyFILE *file)
 {
 
