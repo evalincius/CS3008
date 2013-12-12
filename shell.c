@@ -11,13 +11,14 @@ int main()
    Byte text[4*BLOCKSIZE] = "ABaaaBABASad asdasasdas asdasdasdasdasd";
    MyFILE * file;
    file = myfopen("testfile.txt", "w");
+   
    for(int i =0; i<4*BLOCKSIZE; i++)
    {
    	Byte byte = text[i];
    	//printf("file's pos %d\n", text[i]);
    	myfputc ( byte, file );
    }
-     	myfclose(file);
+    myfclose(file); 	
  //---------GET------------------------------------
    
    MyFILE * file2;

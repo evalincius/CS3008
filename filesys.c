@@ -55,6 +55,21 @@ void writeblock ( diskblock_t * block, int block_address )
    memmove ( virtualDisk[block_address].data, block->data, BLOCKSIZE ) ;
    //printf ( "writeblock> virtualdisk[%d] = %s / %d\n", block_address, virtualDisk[block_address].data, (int)virtualDisk[block_address].data ) ;
 }
+/* OPEN file with given parameters: filename and mode.
+    *Search in root directory if file with given filename exists.
+    * If so, record files index from entry list to fileindex variable and
+    * If file's mode is readable:
+    * read disk block and copy it to files buffer(disk block).
+    * set files possition(byte within block) to 0 .
+    * return file.
+    * If file with given name is not located in root directory:
+    * get next awailable entry in root directory's entrylist
+    * and assign it's value to fileindex variable and increase next awailable entry by one.
+    * preapare directory entry.
+    * set entrylength, set unused to FALSE, isdir to TRUE, copy files name to name.
+    * write directory block.
+    * return file.
+    */
 MyFILE * myfopen(char * filename, char* mode)
 {
 
@@ -73,7 +88,7 @@ MyFILE * myfopen(char * filename, char* mode)
     if(strcmp(rootDir.entrylist[i].name, filename)==0)
       {
         fileIndex = i;
-        if(mode == "r"){
+        if(strcmp(mode, "r")==0){
           (*file).buffer = buffer;
           (*file).pos = 0;
           return file;
@@ -84,41 +99,31 @@ MyFILE * myfopen(char * filename, char* mode)
   {
     fileIndex = rootDir.nextEntry;
     rootDir.nextEntry++;
-  }else{
-            Byte currentblock = rootDir.entrylist[fileIndex].firstblock;
-            while(FAT[currentblock]!= ENDOFCHAIN)
-            {
-              fatentry_t next = FAT[currentblock];
-              FAT[currentblock] = UNUSED;
-              currentblock = next;
-            }
-
-        }
-
-  int firstunused = -1;            
-  for(int i = 3 ; i< BLOCKSIZE && firstunused == -1; i++){
-      if(FAT[i]== UNUSED){
-        firstunused = i;
-        }
-
   }
-  rootDir.entrylist[fileIndex].isdir = 1;
-  rootDir.entrylist[fileIndex].unused= FALSE;
-  rootDir.entrylist[fileIndex].modtime = 0;
-  rootDir.entrylist[fileIndex].filelength=0;
-  rootDir.entrylist[fileIndex].firstblock  = firstunused;
+  rootDir.entrylist[fileIndex].isdir = TRUE;
+  rootDir.entrylist[fileIndex].unused = FALSE;
+  rootDir.entrylist[fileIndex].entrylength = strlen(filename);
   strcpy(rootDir.entrylist[fileIndex].name, filename);
   writeblock(&rootDir, 3);
   return file;
 }
+/* PUT file's content to file piece by piece (look in shell.c).
+  * get current file's possition(byte within block) and check if it is smaller or equal to BLOCKSIZE.
+  * if so put byte(look in shell.c) to block(files buffer) by file's current possition. increase possition by 1.
+  * if current file's possition(byte within block) is grater then BLOCKSIZE:
+  *    Set current file's possition(byte within block) to 0.
+  *    Write block by blockno(blocknumber whic is currently 4) to virtual disk and increase nlockno by 1.
+  *    Delete buffer's content by setting it's content to 0.
+  *    Update FAT: 
+  *       set FAT block chain
+  *       write FAT blocks 1 and 2 to virtual disk
+  */
 void myfputc ( Byte byte, MyFILE *file )
 {
-  //printf("file's pos %d\n", byte);
-  
   int filepos = (*file).pos;
     if(filepos <= BLOCKSIZE){
-    (*file).buffer.data[filepos] = byte;
-    filepos= ++(*file).pos;
+      (*file).buffer.data[filepos] = byte;
+      filepos= ++(*file).pos;
     }else{
       int tempblnr = (*file).blockno;
       (*file).blockno ++;
@@ -130,29 +135,39 @@ void myfputc ( Byte byte, MyFILE *file )
       diskblock_t block2 ;
       readblock(&block2,2);
       for(int i = tempblnr; i < BLOCKSIZE; i++){
-      FAT[i] = UNUSED;
+        FAT[i] = UNUSED;
       }
       FAT[tempblnr] = (*file).blockno ;
       FAT[(*file).blockno] = ENDOFCHAIN;
       
       for(int i = 0; i < 512; i++){
-      block.fat[i] = FAT[i];
+        block.fat[i] = FAT[i];
       }
-       writeblock(&block, 1);
+      writeblock(&block, 1);
       for(int i = 512; i < 1024; i++){
-       block2.fat[i-512] = FAT[i];
+         block2.fat[i-512] = FAT[i];
       }
       writeblock(&block2, 2);
     }
   
 }
+/* GET file's content from file piece by piece (look in shell.c).
+  * get current file's possition(byte within block) and check if it is smaller or equal to BLOCKSIZE.
+  * if so get byte(look in shell.c) from block(files buffer) by file's current possition. increase possition by 1.
+  * if current file's possition(byte within block) is grater then BLOCKSIZE:
+  *    Set current file's possition(byte within block) to 0.
+  *    Delete buffer's content by setting it's content to 0.
+  *    Read block by blockno(blocknumber whic is currently 4) so we have to increase blockno by 1.
+  *    get byte(look in shell.c) from block(files buffer) by file's current possition.
+  * return that byte.
+  */
 Byte myfgetc(MyFILE *file)
 {   fatentry_t num;
     Byte Buffdata;
     int filepos = (*file).pos;
     if(filepos <= BLOCKSIZE){
-    Buffdata = (*file).buffer.data[filepos];
-    filepos= ++(*file).pos;
+      Buffdata = (*file).buffer.data[filepos];
+      filepos= ++(*file).pos;
     }else{
       memset(&(*file).buffer,0,sizeof(diskblock_t));
       (*file).pos = 0;
@@ -163,10 +178,12 @@ Byte myfgetc(MyFILE *file)
     }
     return Buffdata;
 }
-
+/* CLOSE file
+  *free allocated memory for file.
+  */
 void myfclose(MyFILE *file)
 {
-
+  free(file);
 }
 
 
@@ -203,23 +220,20 @@ void format ( )
 	* write block 0 to virtual disk
 	*/
   int i;
+  for ( i=0; i< BLOCKSIZE; i++){ block.data[i] = '\0';}
+  strcpy( (char*)block.data, "CS3008 blem" );
+  writeblock( &block, 0);
    
-   for ( i=0; i< BLOCKSIZE; i++) block.data[i] = '\0';
-   strcpy( (char*)block.data, "CS3008 blem" );
-   writeblock( &block, 0);
-   
-	/* prepare FAT table
-	 * write FAT blocks to virtual disk
+	/* prepare FAT table: fill it with UNUSED,
+   * set FAT own block chain
+	 * write FAT blocks 1 and 2 to virtual disk
 	 */
    for(i = 3; i < BLOCKSIZE; ++i){
      FAT[i] = UNUSED;
     }
-   FAT[1] = 2 ;
-   FAT[2] = ENDOFCHAIN;
-   FAT[3] = ENDOFCHAIN;
-   
-   
-  
+    FAT[1] = 2 ;
+    FAT[2] = ENDOFCHAIN;
+    FAT[3] = ENDOFCHAIN;
     for(i = 0; i < 512; i++){
      block.fat[i] = FAT[i];
     }
@@ -230,6 +244,7 @@ void format ( )
     writeblock(&block, 2);
    
 	 /* prepare root directory
+    * fill all block to 0
 	  * write root directory block to virtual disk
 	  */
   
@@ -237,7 +252,10 @@ void format ( )
   db.isdir = 1;
   db.nextEntry = 0;
   writeblock(&db, 3);
-
+/* format rest of blocks
+    * fill all block to 0
+    * write blocks to virtual disk
+    */
   for(i=0; i<BLOCKSIZE; i++){
 
     block.data[i]= 0;
