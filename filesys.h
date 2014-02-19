@@ -3,6 +3,9 @@
  * describes FAT structures
  * http://www.c-jump.com/CIS24/Slides/FAT/lecture.html#F01_0020_fat
  * http://www.tavi.co.uk/phobos/fat.html
+ *
+ * By Edgaras Valincius
+ * Student Id. 51121624
  */
 
 #ifndef FILESYS_H

@@ -1,3 +1,10 @@
+/* shell.c
+ * 
+ * provides main method for program
+ * 
+ * By Edgaras Valincius
+ * Student Id. 51121624
+ */
 #include <stdio.h>
 #include "filesys.h"
 
@@ -6,9 +13,10 @@ int main()
    /* code */
    readdisk("virtualdisk9_11");
    format();
+   writedisk("virtualdisk9_11");
    //-----WRITE------------------------------------
    
-   Byte text[4*BLOCKSIZE] = "ABaaaBABASad asdasasdas asdasdasdasdasd";
+   Byte text[4*BLOCKSIZE] = "This is test string";
    MyFILE * file;
    file = myfopen("testfile.txt", "w"); // opens virtual file
    for(int i =0; i<4*BLOCKSIZE; i++) 
@@ -21,7 +29,7 @@ int main()
    
    MyFILE * file2;
    FILE *fp; 
-   fp=fopen("file.txt","w"); // opens real file
+   fp=fopen("testfile12_14_copy.txt","w"); // opens real file
    file2 = myfopen("testfile.txt", "r"); // opens virtual file
    for(int i =0; i<4*BLOCKSIZE; i++){
       Byte data = myfgetc(file2); //gets data byte prom file

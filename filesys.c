@@ -2,6 +2,8 @@
  * 
  * provides interface to virtual disk
  * 
+ * By Edgaras Valincius
+ * Student Id. 51121624
  */
 #include <stdio.h>
 #include <unistd.h>
@@ -79,10 +81,7 @@ MyFILE * myfopen(char * filename, char* mode)
   (*file).blockno = 4;
   readblock(&buffer,3);
   rootDir = buffer.dir;
-
-
   int fileIndex = -1;
-  
   for(int i = 0; i<rootDir.nextEntry && fileIndex == -1;i++)
   {
     if(strcmp(rootDir.entrylist[i].name, filename)==0)
@@ -221,7 +220,7 @@ void format ( )
 	*/
   int i;
   for ( i=0; i< BLOCKSIZE; i++){ block.data[i] = '\0';}
-  strcpy( (char*)block.data, "CS3008 blem" );
+  strcpy( (char*)block.data, "CS3008 Operating Systems Assessment 2012" );
   writeblock( &block, 0);
    
 	/* prepare FAT table: fill it with UNUSED,
